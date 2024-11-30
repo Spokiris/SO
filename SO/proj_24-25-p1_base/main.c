@@ -13,21 +13,21 @@
 
 
 int kvs_run(int fd_input, int fd_output) {
+  char keys[MAX_WRITE_SIZE][MAX_STRING_SIZE] = {0};
+  char values[MAX_WRITE_SIZE][MAX_STRING_SIZE] = {0};
+  unsigned int delay;
+  size_t num_pairs;
   while (1) {
-    char keys[MAX_WRITE_SIZE][MAX_STRING_SIZE] = {0};
-    char values[MAX_WRITE_SIZE][MAX_STRING_SIZE] = {0};
-    unsigned int delay;
-    size_t num_pairs;
-
     switch (get_next(fd_input)) { // colocar um fopen por exemplo
       case CMD_WRITE:
+        printf("write\n");
         num_pairs = parse_write(fd_input, keys, values, MAX_WRITE_SIZE, MAX_STRING_SIZE);
         if (num_pairs == 0) {
           fprintf(stderr, "Invalid command. See HELP for usage\n");
           break;
         }
 
-        if (kvs_write(num_pairs, keys, values)) { //FIXME: adicionar fd_output
+        if (kvs_write(num_pairs, keys, values, fd_output)) { //FIXME: adicionar fd_output
           fprintf(stderr, "Failed to write pair\n");
         }
 
@@ -54,7 +54,7 @@ int kvs_run(int fd_input, int fd_output) {
           break;
         }
 
-        if (kvs_delete(num_pairs, keys)) { //FIXME: adicionar fd_output
+        if (kvs_delete(num_pairs, keys, fd_output)) { //FIXME: adicionar fd_output
           fprintf(stderr, "Failed to delete pair\n");
         }
         break;

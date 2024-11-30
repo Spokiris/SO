@@ -37,7 +37,7 @@ int kvs_terminate() {
   return 0;
 }
 
-int kvs_write(size_t num_pairs, char keys[][MAX_STRING_SIZE], char values[][MAX_STRING_SIZE]) {
+int kvs_write(size_t num_pairs, char keys[][MAX_STRING_SIZE], char values[][MAX_STRING_SIZE], int output_file) {
   if (kvs_table == NULL) {
     fprintf(stderr, "KVS state must be initialized\n");
     return 1;
@@ -45,7 +45,9 @@ int kvs_write(size_t num_pairs, char keys[][MAX_STRING_SIZE], char values[][MAX_
 
   for (size_t i = 0; i < num_pairs; i++) {
     if (write_pair(kvs_table, keys[i], values[i]) != 0) {
-      fprintf(stderr, "Failed to write keypair (%s,%s)\n", keys[i], values[i]);
+      char errorMsg[MAX_WRITE_SIZE];
+      snprintf(errorMsg, MAX_WRITE_SIZE, "Failed to write keypair (%s,%s)\n", keys[i], values[i]);
+      write(output_file, errorMsg, strlen(errorMsg));
     }
   }
 
@@ -54,42 +56,51 @@ int kvs_write(size_t num_pairs, char keys[][MAX_STRING_SIZE], char values[][MAX_
 
 int kvs_read(size_t num_pairs, char keys[][MAX_STRING_SIZE], int output_file) {
   if (kvs_table == NULL) {
-    fprintf(stderr, "KVS state must be initialized\n");
+    char errorMsg[MAX_WRITE_SIZE];
+    snprintf(errorMsg, MAX_WRITE_SIZE, "KVS state must be initialized\n");
+    write(output_file, errorMsg, strlen(errorMsg));
     return 1;
   }
 
-    char msgToOutputFile[MAX_WRITE_SIZE] = "";
-    strcat(msgToOutputFile, "[(");
-      for (size_t i = 0; i < num_pairs; i++){
-        strcat(msgToOutputFile, keys[i]);
-        char *value = read_pair(kvs_table, keys[i]);
-        if (value != NULL) {
-          strcat(msgToOutputFile, ",");
-          strcat(msgToOutputFile, value);
-        }
-        else {
-          strcat(msgToOutputFile, ",KVSMISSING");
-        }
-        free(value);
-      }
-
-      strcat(msgToOutputFile, ")]");
-      write(output_file, msgToOutputFile, strlen(msgToOutputFile));
-      return 0;
-    
+  char msgToOutputFile[MAX_WRITE_SIZE];
+  write(output_file, "[", 1);
+  for (size_t i = 0; i < num_pairs; i++) {
+    char* result = read_pair(kvs_table, keys[i]);
+    if (result == NULL) {
+      snprintf(msgToOutputFile, MAX_WRITE_SIZE, "(%s,KVSERROR)", keys[i]);
+    } else {
+      snprintf(msgToOutputFile, MAX_WRITE_SIZE, "(%s,%s)", keys[i], result);
+    }
+    write(output_file, msgToOutputFile, strlen(msgToOutputFile));
+    free(result);
+  }
+  write(output_file, "]\n", 2);
+  return 0;
 }
 
 
-int kvs_delete(size_t num_pairs, char keys[][MAX_STRING_SIZE]) {
+int kvs_delete(size_t num_pairs, char keys[][MAX_STRING_SIZE], int output_file) {
   if (kvs_table == NULL) {
-    fprintf(stderr, "KVS state must be initialized\n");
+    char errorMsg[MAX_WRITE_SIZE];
+    snprintf(errorMsg, MAX_WRITE_SIZE, "KVS state must be initialized\n");
+    write(output_file, errorMsg, strlen(errorMsg));
     return 1;
   }
+  int aux = 0;
 
   for (size_t i = 0; i < num_pairs; i++) {
     if (delete_pair(kvs_table, keys[i]) != 0) {
-      fprintf(stderr, "(%s,KVSMISSING)", keys[i]);
+      if (!aux) {
+        write(output_file, "[", 1);
+        aux = 1;
+      }
+      char errorMsg[MAX_WRITE_SIZE];
+      snprintf(errorMsg, MAX_WRITE_SIZE, "(%s,KVSMISSING)", keys[i]);
+      write(output_file, errorMsg, strlen(errorMsg));
     }
+  }
+  if (aux) {
+    write(output_file, "]\n", 2);
   }
 
   return 0;
