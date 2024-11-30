@@ -23,14 +23,9 @@ int kvs_run(int fd_input, int fd_output) {
         printf("write\n");
         num_pairs = parse_write(fd_input, keys, values, MAX_WRITE_SIZE, MAX_STRING_SIZE);
         if (num_pairs == 0) {
-          fprintf(stderr, "Invalid command. See HELP for usage\n");
           break;
         }
-
-        if (kvs_write(num_pairs, keys, values, fd_output)) { //FIXME: adicionar fd_output
-          fprintf(stderr, "Failed to write pair\n");
-        }
-
+        kvs_write(num_pairs, keys, values, fd_output);
         break;
 
       case CMD_READ:
@@ -83,20 +78,28 @@ int kvs_run(int fd_input, int fd_output) {
         break;
 
       case CMD_INVALID:
-        fprintf(stderr, "Invalid command. See HELP for usage\n");
         break;
 
       case CMD_HELP:
-       printf(
-            "Available commands:\n"
-            "  WRITE [(key,value),(key2,value2),...]\n"
-            "  READ [key,key2,...]\n"
-            "  DELETE [key,key2,...]\n"
-            "  SHOW\n"
-            "  WAIT <delay_ms>\n"
-            "  BACKUP\n" // Not implemented
-            "  HELP\n"
-        ); 
+      write(fd_output,
+          "Available commands:\n"
+          "  WRITE [(key,value),(key2,value2),...]\n"
+          "  READ [key,key2,...]\n"
+          "  DELETE [key,key2,...]\n"
+          "  SHOW\n"
+          "  WAIT <delay_ms>\n"
+          "  BACKUP\n" // Not implemented
+          "  HELP\n",
+          strlen(
+          "Available commands:\n"
+          "  WRITE [(key,value),(key2,value2),...]\n"
+          "  READ [key,key2,...]\n"
+          "  DELETE [key,key2,...]\n"
+          "  SHOW\n"
+          "  WAIT <delay_ms>\n"
+          "  BACKUP\n"
+          "  HELP\n")
+      );
 
         break;
         
@@ -104,10 +107,15 @@ int kvs_run(int fd_input, int fd_output) {
         break;
 
       case EOC:
+        close(fd_input);
+        close(fd_output);
         return 0;
     }
-    return 0;
+    
   }
+    close(fd_input);
+    close(fd_output);
+    return 0;
 }
 int main(int argc, char *argv[]) {
   if (argc > 3 || argc < 2) {
