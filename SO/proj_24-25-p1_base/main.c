@@ -9,6 +9,7 @@
 #include "operations.h"
 #include <dirent.h>
 #include <fcntl.h>
+#include <sys/stat.h>
 
 
 int kvs_run(int fd_input, int fd_output) {
@@ -26,7 +27,7 @@ int kvs_run(int fd_input, int fd_output) {
           break;
         }
 
-        if (kvs_write(num_pairs, keys, values)) {
+        if (kvs_write(num_pairs, keys, values)) { //FIXME: adicionar fd_output
           fprintf(stderr, "Failed to write pair\n");
         }
 
@@ -53,13 +54,12 @@ int kvs_run(int fd_input, int fd_output) {
           break;
         }
 
-        if (kvs_delete(num_pairs, keys)) {
+        if (kvs_delete(num_pairs, keys)) { //FIXME: adicionar fd_output
           fprintf(stderr, "Failed to delete pair\n");
         }
         break;
 
       case CMD_SHOW:
-
         kvs_show(fd_output);
         break;
 
@@ -132,8 +132,15 @@ int main(int argc, char *argv[]) {
   struct dirent *entry;
   while ((entry = readdir(dir)) != NULL) {
     if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0 && strcmp(strrchr(entry->d_name, '.'), ".job") == 0) {
+      
+      char *ponto = strrchr(entry->d_name, '.');
+      if (ponto == NULL || strcmp(ponto, ".job") != 0)
+      {
+        continue;
+      }
+      
       char job_file_path[MAX_FILE_PATH_SIZE];
-      snprintf(job_file_path, sizeof(job_file_path), "%s/%s", argv[1], entry->d_name);
+      snprintf(job_file_path, sizeof(job_file_path), "%s/%s", directory_path, entry->d_name);
 
       int job_file = open(job_file_path, O_RDONLY);
       if (job_file == -1) {
@@ -141,9 +148,14 @@ int main(int argc, char *argv[]) {
           closedir(dir);
           return 1;
       }
+          // Check if its the file has .job extension
+      
+
+      ponto = strrchr(entry->d_name, '.');
+      *ponto = '\0';
 
       char output_file_path[MAX_FILE_PATH_SIZE];
-      snprintf(output_file_path, sizeof(output_file_path), "%s.out", job_file_path);
+      snprintf(output_file_path, MAX_FILE_PATH_SIZE, "%s/%s.out", directory_path, entry->d_name);
 
       int output_file = open(output_file_path, O_CREAT | O_RDWR | O_TRUNC, S_IRUSR | S_IWUSR | S_IROTH | S_IRGRP);
   
